@@ -1,5 +1,5 @@
-<!-- calidad:inicio -->
-![Calidad](https://img.shields.io/badge/Calidad-sin%20c%C3%B3digo-lightgrey)
+# B-profesional 
 
-**Calidad de servicios:** sin código en `main` (no evaluable).
-<!-- calidad:fin -->
+En este repositorio se realizara el backend para todos los centros de adopción
+
+# INFO:
