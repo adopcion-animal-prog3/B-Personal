@@ -1,8 +1,10 @@
+from collections.abc import Callable
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.services.policies import UserRole
 from app.models.auth import (
     AuthSuccessResponse,
     AuthenticatedUserSuccessResponse,
@@ -51,6 +53,26 @@ def get_current_user(
             detail=str(error),
             headers={"WWW-Authenticate": "Bearer"},
         ) from error
+
+
+def require_role(*allowed_roles: UserRole | str) -> Callable[..., dict[str, Any]]:
+    if not allowed_roles:
+        raise ValueError("At least one role must be allowed")
+    role_names = {
+        role.value if isinstance(role, UserRole) else role for role in allowed_roles
+    }
+
+    def role_dependency(
+        user: dict[str, Any] = Depends(get_current_user),
+    ) -> dict[str, Any]:
+        if user.get("rol") not in role_names:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        return user
+
+    return role_dependency
 
 
 @router.post(
