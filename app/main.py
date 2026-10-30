@@ -10,8 +10,13 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.config import Settings
 from app.repositories.database import DatabaseRepository, create_database_engine
 from app.repositories.mascotas import DatabaseUnavailableError
+from app.routes.auth import router as auth_router
 from app.routes.health import router as health_router
 from app.routes.mascotas import router as mascotas_router
+from app.services.auth import (
+    AuthService,
+    AuthenticationConfigurationError,
+)
 from app.services.health import HealthService
 from app.services.mascotas import MascotaNotFoundError, MascotaService
 
@@ -38,6 +43,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.health_service = HealthService(DatabaseRepository(engine))
     app.state.mascota_service = MascotaService(engine)
+    app.state.auth_service = AuthService(engine, app_settings)
+    app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(mascotas_router)
 
@@ -58,6 +65,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content=_error_response("Database unavailable"),
+        )
+
+    @app.exception_handler(AuthenticationConfigurationError)
+    async def authentication_configuration_error_handler(
+        _: Request, error: AuthenticationConfigurationError
+    ) -> JSONResponse:
+        logger.error("Authentication is not configured (%s)", type(error).__name__)
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=_error_response("Authentication service is not configured"),
         )
 
     @app.exception_handler(IntegrityError)

@@ -17,6 +17,11 @@ Configurar `DATABASE_URL` en `.env` con una conexión PostgreSQL a la base que
 contenga el esquema compartido de `mascotas` definido en `B-Profesional/init.sql`.
 Sin conexión configurada, los endpoints de mascotas responden `503`.
 
+Para autenticación, configurar `JWT_SECRET` con una clave aleatoria de al menos
+32 bytes y, opcionalmente, `JWT_EXPIRATION_MINUTES` (60 por defecto). El registro
+usa el rol `ADOPTANTE` definido por el esquema compartido. Los endpoints son
+`POST /api/auth/register`, `POST /api/auth/login` y `GET /api/auth/me`.
+
 La documentación interactiva está disponible en `/docs`.
 
 ## Pruebas

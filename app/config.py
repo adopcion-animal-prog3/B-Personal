@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,3 +13,5 @@ class Settings(BaseSettings):
 
     database_url: SecretStr | None = None
     log_level: Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"] = "INFO"
+    jwt_secret: SecretStr | None = None
+    jwt_expiration_minutes: int = Field(default=60, gt=0)
