@@ -22,6 +22,13 @@ Para autenticación, configurar `JWT_SECRET` con una clave aleatoria de al menos
 usa el rol `ADOPTANTE` definido por el esquema compartido. Los endpoints son
 `POST /api/auth/register`, `POST /api/auth/login` y `GET /api/auth/me`.
 
+Las lecturas de mascotas siguen siendo públicas; crear, actualizar o eliminar
+mascotas requiere un usuario `ADMIN`. La capa de políticas define además el
+acceso a solicitudes (ADMIN o titular), el acceso administrativo al historial,
+la disponibilidad de mascotas y las transiciones de solicitudes: `PENDIENTE`
+puede permanecer pendiente o pasar a `APROBADA`/`RECHAZADA`; esos estados son
+finales. Los endpoints de solicitudes e historial se implementan en B5.
+
 La documentación interactiva está disponible en `/docs`.
 
 ## Pruebas

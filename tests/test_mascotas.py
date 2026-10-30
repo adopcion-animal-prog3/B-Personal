@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, text
 
 from app.main import create_app
 from app.models.mascota import MascotaCreate
+from app.routes.auth import get_current_user
 from app.repositories.mascotas import MascotaRepository
 from app.services.mascotas import (
     DatabaseUnavailableError,
@@ -62,6 +63,10 @@ class FakeMascotaRepository:
 class MascotaEndpointsTests(unittest.TestCase):
     def setUp(self) -> None:
         self.app = create_app()
+        self.app.dependency_overrides[get_current_user] = lambda: {
+            "id": 1,
+            "rol": "ADMIN",
+        }
         repository = FakeMascotaRepository()
         self.app.state.mascota_service = MascotaService.__new__(MascotaService)
         self.app.state.mascota_service._repository = repository
