@@ -14,7 +14,7 @@ uvicorn app.main:app --reload
 ```
 
 Configurar `DATABASE_URL` en `.env` con una conexión PostgreSQL a la base que
-contenga el esquema compartido de `mascotas` definido en `B-Profesional/init.sql`.
+contenga el esquema compartido definido en `B-Profesional/init.sql`.
 Sin conexión configurada, los endpoints de mascotas responden `503`.
 
 Para autenticación, configurar `JWT_SECRET` con una clave aleatoria de al menos
@@ -82,6 +82,51 @@ Esta ruta responde `201` con el mismo envelope y un objeto `data` con
 
 La documentación interactiva está disponible en `/docs`.
 
+## Contrato de errores HTTP
+
+Las respuestas de error mantienen el contrato común usado por Express:
+
+```json
+{
+  "success": false,
+  "status": "error",
+  "message": "Invalid request data",
+  "error": {"message": "Invalid request data"},
+  "errors": [{"field": "body.email", "message": "email is invalid"}]
+}
+```
+
+`errors` solo se incluye para validaciones y no contiene los valores recibidos.
+Los errores inesperados responden `500` con el mensaje genérico
+`Internal server error`; los detalles internos se excluyen del cuerpo y de los
+logs. El mapeo HTTP es `400` para validación/reglas de negocio, `401` para
+autenticación, `403` para permisos, `404` para recursos inexistentes, `409`
+para conflictos, y `503` para indisponibilidad de base de datos o configuración
+de autenticación. Los endpoints y esquemas de errores están documentados en
+OpenAPI (`/openapi.json`) y Swagger UI (`/docs`).
+
+Este envelope coincide con el `errorResponse` del backend Express compartido:
+ambos devuelven `success`, `status`, `message` y `error.message`; FastAPI agrega
+`errors` únicamente con detalles de validación.
+
+## Docker
+
+La imagen contiene únicamente la API; PostgreSQL debe estar disponible con el
+esquema compartido. Copiar y configurar el archivo de entorno antes de iniciar
+el contenedor:
+
+```bash
+cp .env.example .env
+# Configure DATABASE_URL y JWT_SECRET (al menos 32 bytes).
+docker compose up --build
+```
+
+La API queda disponible en `http://localhost:8000` y la documentación en
+`http://localhost:8000/docs`. Para una base PostgreSQL que corre en el host, se
+puede usar `host.docker.internal` como hostname en `DATABASE_URL`; Compose
+configura ese alias también en Linux. No se incluyen credenciales ni secretos
+en la imagen y el proceso del contenedor se ejecuta sin privilegios de root.
+
 ## Pruebas
 
 ```bash
@@ -89,6 +134,7 @@ pip install -r requirements-dev.txt
 python -m unittest discover -s tests -v
 ```
 
-Las pruebas HTTP usan un repositorio doble; las pruebas del repositorio verifican
-persistencia en SQLite en memoria. Para comprobar PostgreSQL se necesita una base
-de pruebas configurada por separado.
+Las pruebas HTTP verifican el envelope de errores, códigos HTTP, documentación
+OpenAPI, permisos y validaciones. Las pruebas del repositorio verifican
+persistencia en SQLite en memoria. Para comprobar PostgreSQL se necesita una
+base de pruebas configurada por separado.

@@ -2,6 +2,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Request, status
 
+from app.models.errors import COMMON_ERROR_RESPONSES
 from app.models.historial import (
     HistorialCreate,
     HistorialDeleteSuccessResponse,
@@ -15,7 +16,7 @@ from app.routes.auth import get_current_user, require_role
 from app.services.historial import HistorialService
 from app.services.policies import UserRole
 
-router = APIRouter(tags=["historial"])
+router = APIRouter(tags=["historial"], responses=COMMON_ERROR_RESPONSES)
 
 
 def get_historial_service(request: Request) -> HistorialService:

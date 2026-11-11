@@ -4,6 +4,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.models.errors import COMMON_ERROR_RESPONSES
 from app.services.policies import UserRole
 from app.models.auth import (
     AuthSuccessResponse,
@@ -21,7 +22,9 @@ from app.services.auth import (
     InvalidCredentialsError,
 )
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(
+    prefix="/api/auth", tags=["auth"], responses=COMMON_ERROR_RESPONSES
+)
 _bearer_scheme = HTTPBearer(auto_error=False)
 
 
