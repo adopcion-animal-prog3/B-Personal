@@ -2,6 +2,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Request, status
 
+from app.models.errors import COMMON_ERROR_RESPONSES
 from app.models.solicitud import (
     SolicitudCreate,
     SolicitudId,
@@ -13,7 +14,11 @@ from app.routes.auth import get_current_user, require_role
 from app.services.policies import UserRole
 from app.services.solicitudes import SolicitudService
 
-router = APIRouter(prefix="/api/solicitudes", tags=["solicitudes"])
+router = APIRouter(
+    prefix="/api/solicitudes",
+    tags=["solicitudes"],
+    responses=COMMON_ERROR_RESPONSES,
+)
 
 
 def get_solicitud_service(request: Request) -> SolicitudService:

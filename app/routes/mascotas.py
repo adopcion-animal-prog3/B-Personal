@@ -2,6 +2,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Request, Response, status
 
+from app.models.errors import COMMON_ERROR_RESPONSES
 from app.routes.auth import require_role
 from app.models.mascota import (
     MascotaCreate,
@@ -13,7 +14,11 @@ from app.models.mascota import (
 from app.services.mascotas import MascotaService
 from app.services.policies import UserRole
 
-router = APIRouter(prefix="/api/mascotas", tags=["mascotas"])
+router = APIRouter(
+    prefix="/api/mascotas",
+    tags=["mascotas"],
+    responses=COMMON_ERROR_RESPONSES,
+)
 
 
 def get_mascota_service(request: Request) -> MascotaService:

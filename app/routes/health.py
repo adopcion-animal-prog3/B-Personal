@@ -1,9 +1,12 @@
 from fastapi import APIRouter, HTTPException, Request, status
 
+from app.models.errors import COMMON_ERROR_RESPONSES
 from app.models.health import HealthResponse
 from app.services.health import HealthService
 
-router = APIRouter(prefix="/health", tags=["health"])
+router = APIRouter(
+    prefix="/health", tags=["health"], responses=COMMON_ERROR_RESPONSES
+)
 
 
 def get_health_service(request: Request) -> HealthService:
