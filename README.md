@@ -131,10 +131,19 @@ en la imagen y el proceso del contenedor se ejecuta sin privilegios de root.
 
 ```bash
 pip install -r requirements-dev.txt
-python -m unittest discover -s tests -v
+python -m pytest
+```
+
+Pytest ejecuta la suite, mide cobertura de líneas y ramas para `app.services`,
+falla si es menor al 80 % y genera `htmlcov/index.html`. Para guardar también un
+informe XML reproducible para CI:
+
+```bash
+python -m pytest --cov-report=xml:coverage.xml
 ```
 
 Las pruebas HTTP verifican el envelope de errores, códigos HTTP, documentación
 OpenAPI, permisos y validaciones. Las pruebas del repositorio verifican
 persistencia en SQLite en memoria. Para comprobar PostgreSQL se necesita una
-base de pruebas configurada por separado.
+base de pruebas configurada por separado. Resultados, paridad con Express y
+revisión de calidad están en [docs/VERIFICACION_CALIDAD.md](./docs/VERIFICACION_CALIDAD.md).
