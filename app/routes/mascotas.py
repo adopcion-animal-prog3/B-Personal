@@ -1,7 +1,8 @@
 from typing import Any
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
+from app.routes.auth import require_role
 from app.models.mascota import (
     MascotaCreate,
     MascotaId,
@@ -10,6 +11,7 @@ from app.models.mascota import (
     SuccessResponse,
 )
 from app.services.mascotas import MascotaService
+from app.services.policies import UserRole
 
 router = APIRouter(prefix="/api/mascotas", tags=["mascotas"])
 
@@ -41,6 +43,7 @@ def get_mascota(
     "",
     response_model=SuccessResponse[MascotaResponse],
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role(UserRole.ADMIN))],
 )
 def create_mascota(
     mascota: MascotaCreate, request: Request
@@ -49,7 +52,11 @@ def create_mascota(
     return {"success": True, "status": "success", "data": created}
 
 
-@router.put("/{mascota_id}", response_model=SuccessResponse[MascotaResponse])
+@router.put(
+    "/{mascota_id}",
+    response_model=SuccessResponse[MascotaResponse],
+    dependencies=[Depends(require_role(UserRole.ADMIN))],
+)
 def update_mascota(
     mascota: MascotaUpdate,
     request: Request,
@@ -59,7 +66,11 @@ def update_mascota(
     return {"success": True, "status": "success", "data": updated}
 
 
-@router.delete("/{mascota_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{mascota_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_role(UserRole.ADMIN))],
+)
 def delete_mascota(
     request: Request, mascota_id: MascotaId
 ) -> Response:
