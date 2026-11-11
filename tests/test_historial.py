@@ -8,7 +8,6 @@ class HistorialEndpointTests(AdoptionApiTestCase):
         created = self.client.post(
             "/api/mascotas/1/historial",
             json={
-                "fecha_registro": "2026-04-03T10:30:00Z",
                 "descripcion": "Vacunación anual",
                 "veterinario": "Dra. Torres",
             },

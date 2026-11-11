@@ -10,7 +10,12 @@ from sqlalchemy.pool import StaticPool
 
 from app.config import Settings
 from app.main import create_app
-from app.services.auth import AuthService
+from app.models.auth import LoginRequest
+from app.services.auth import (
+    AuthService,
+    AuthenticationConfigurationError,
+    InvalidAuthTokenError,
+)
 
 
 class AuthEndpointsTests(unittest.TestCase):
@@ -130,6 +135,55 @@ class AuthEndpointsTests(unittest.TestCase):
         self.assertEqual(wrong_password.status_code, 401)
         wrong_email = self.login(email="missing@example.com")
         self.assertEqual(wrong_email.status_code, 401)
+
+    def test_malformed_stored_password_hash_does_not_leak_details(self) -> None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO usuarios "
+                    "(nombre, email, password_hash) "
+                    "VALUES (:nombre, :email, :password_hash)"
+                ),
+                {
+                    "nombre": "Broken hash",
+                    "email": "broken@example.com",
+                    "password_hash": "not-a-valid-bcrypt-hash",
+                },
+            )
+
+        response = self.login(email="broken@example.com")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["message"], "Invalid email or password")
+        self.assertNotIn("hash", response.text)
+
+    def test_authentication_rejects_signed_tokens_without_valid_users(self) -> None:
+        self.assertEqual(self.register().status_code, 201)
+        for subject in ("not-an-id", "999"):
+            token = jwt.encode(
+                {"sub": subject, "exp": datetime.now(timezone.utc) + timedelta(minutes=1)},
+                self.jwt_secret,
+                algorithm="HS256",
+            )
+            with self.subTest(subject=subject):
+                response = self.client.get(
+                    "/api/auth/me",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                self.assertEqual(response.status_code, 401)
+                self.assertEqual(response.json()["message"], "Invalid token")
+
+    def test_authentication_configuration_requires_a_strong_secret(self) -> None:
+        self.assertEqual(self.register().status_code, 201)
+        credentials = LoginRequest(
+            email="ada@example.com", password="secure password 123"
+        )
+
+        for settings in (Settings(), Settings(jwt_secret="too-short")):
+            with self.subTest(settings=settings.jwt_secret):
+                service = AuthService(self.engine, settings)
+                with self.assertRaises(AuthenticationConfigurationError):
+                    service.login(credentials)
 
     def test_me_accepts_valid_token_and_rejects_absent_invalid_and_expired_tokens(
         self,
