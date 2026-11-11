@@ -23,11 +23,62 @@ usa el rol `ADOPTANTE` definido por el esquema compartido. Los endpoints son
 `POST /api/auth/register`, `POST /api/auth/login` y `GET /api/auth/me`.
 
 Las lecturas de mascotas siguen siendo públicas; crear, actualizar o eliminar
-mascotas requiere un usuario `ADMIN`. La capa de políticas define además el
-acceso a solicitudes (ADMIN o titular), el acceso administrativo al historial,
-la disponibilidad de mascotas y las transiciones de solicitudes: `PENDIENTE`
-puede permanecer pendiente o pasar a `APROBADA`/`RECHAZADA`; esos estados son
-finales. Los endpoints de solicitudes e historial se implementan en B5.
+mascotas requiere un usuario `ADMIN`. Las solicitudes requieren autenticación: ADMIN puede consultar todas y
+ADOPTANTE solo las propias; la creación asocia el usuario autenticado y solo
+admite mascotas disponibles. Solo ADMIN cambia el estado. `PENDIENTE` puede
+permanecer pendiente o pasar a `APROBADA`/`RECHAZADA`; esos estados son finales.
+El historial clínico está restringido a ADMIN y sus operaciones verifican la
+existencia de la mascota asociada. Las rutas implementadas son:
+
+- `GET /api/solicitudes` y `GET /api/solicitudes/{id}`
+- `POST /api/solicitudes` con `mascota_id` y `mensaje` opcional
+- `PUT /api/solicitudes/{id}` con `estado`
+- `GET|POST /api/mascotas/{id}/historial`
+- `PUT|DELETE /api/historial/{id}`
+
+Las respuestas exitosas usan el envelope común `{success, status, data}` y
+las listas incluyen `count`. Los cuerpos inválidos responden `400`; los
+recursos no existentes, `404`; y los accesos no autorizados, `401`/`403`.
+`DELETE /api/historial/{id}` responde `200` con el mensaje de eliminación y
+el registro eliminado dentro de `data`.
+
+Ejemplos de cuerpos y respuestas:
+
+```http
+POST /api/solicitudes
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{"mascota_id": 1, "mensaje": "Quisiera adoptar a Luna"}
+```
+
+```json
+{
+  "success": true,
+  "status": "success",
+  "data": {
+    "id": 1,
+    "usuario_id": 2,
+    "mascota_id": 1,
+    "estado": "PENDIENTE",
+    "mensaje": "Quisiera adoptar a Luna",
+    "created_at": "2026-04-03T10:30:00Z",
+    "updated_at": null
+  }
+}
+```
+
+```http
+POST /api/mascotas/1/historial
+Authorization: Bearer <token-de-admin>
+Content-Type: application/json
+
+{"descripcion": "Vacunación anual", "veterinario": "Dra. Torres"}
+```
+
+Esta ruta responde `201` con el mismo envelope y un objeto `data` con
+`mascota_id`, `fecha_registro`, `descripcion`, `veterinario`, `created_at` y
+`updated_at`.
 
 La documentación interactiva está disponible en `/docs`.
 

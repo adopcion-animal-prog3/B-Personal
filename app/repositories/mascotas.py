@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from sqlalchemy import Engine, text
+from sqlalchemy import Boolean, Engine, text
 
 
 class DatabaseUnavailableError(Exception):
@@ -28,7 +28,9 @@ class MascotaRepository:
 
     def list(self) -> list[dict[str, Any]]:
         engine = self._require_engine()
-        query = text(f"SELECT {_MASCOTA_COLUMNS} FROM mascotas ORDER BY id")
+        query = text(
+            f"SELECT {_MASCOTA_COLUMNS} FROM mascotas ORDER BY id"
+        ).columns(adoptada=Boolean())
         with engine.connect() as connection:
             rows = connection.execute(query).mappings().all()
         return [dict(row) for row in rows]
@@ -37,7 +39,7 @@ class MascotaRepository:
         engine = self._require_engine()
         query = text(
             f"SELECT {_MASCOTA_COLUMNS} FROM mascotas WHERE id = :mascota_id"
-        )
+        ).columns(adoptada=Boolean())
         with engine.connect() as connection:
             row = connection.execute(query, {"mascota_id": mascota_id}).mappings().first()
         return dict(row) if row is not None else None
