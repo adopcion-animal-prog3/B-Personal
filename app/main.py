@@ -12,13 +12,18 @@ from app.repositories.database import DatabaseRepository, create_database_engine
 from app.repositories.mascotas import DatabaseUnavailableError
 from app.routes.auth import router as auth_router
 from app.routes.health import router as health_router
+from app.routes.historial import router as historial_router
 from app.routes.mascotas import router as mascotas_router
+from app.routes.solicitudes import router as solicitudes_router
 from app.services.auth import (
     AuthService,
     AuthenticationConfigurationError,
 )
 from app.services.health import HealthService
+from app.services.historial import HistorialNotFoundError, HistorialService
 from app.services.mascotas import MascotaNotFoundError, MascotaService
+from app.services.policies import BusinessRuleViolationError, ResourceAccessDeniedError
+from app.services.solicitudes import SolicitudNotFoundError, SolicitudService
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -43,10 +48,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.health_service = HealthService(DatabaseRepository(engine))
     app.state.mascota_service = MascotaService(engine)
+    app.state.solicitud_service = SolicitudService(engine)
+    app.state.historial_service = HistorialService(engine)
     app.state.auth_service = AuthService(engine, app_settings)
     app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(mascotas_router)
+    app.include_router(solicitudes_router)
+    app.include_router(historial_router)
 
     @app.exception_handler(MascotaNotFoundError)
     async def mascota_not_found_handler(
@@ -54,6 +63,42 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
+            content=_error_response(str(error)),
+        )
+
+    @app.exception_handler(SolicitudNotFoundError)
+    async def solicitud_not_found_handler(
+        _: Request, error: SolicitudNotFoundError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content=_error_response(str(error)),
+        )
+
+    @app.exception_handler(HistorialNotFoundError)
+    async def historial_not_found_handler(
+        _: Request, error: HistorialNotFoundError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content=_error_response(str(error)),
+        )
+
+    @app.exception_handler(ResourceAccessDeniedError)
+    async def resource_access_denied_handler(
+        _: Request, error: ResourceAccessDeniedError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content=_error_response(str(error)),
+        )
+
+    @app.exception_handler(BusinessRuleViolationError)
+    async def business_rule_violation_handler(
+        _: Request, error: BusinessRuleViolationError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
             content=_error_response(str(error)),
         )
 
