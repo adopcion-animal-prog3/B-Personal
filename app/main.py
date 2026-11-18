@@ -12,11 +12,13 @@ from app.routes.auth import router as auth_router
 from app.routes.health import router as health_router
 from app.routes.historial import router as historial_router
 from app.routes.mascotas import router as mascotas_router
+from app.routes.mensajes import router as mensajes_router
 from app.routes.solicitudes import router as solicitudes_router
 from app.services.auth import AuthService
 from app.services.health import HealthService
 from app.services.historial import HistorialService
 from app.services.mascotas import MascotaService
+from app.services.mensajes import MensajeService
 from app.services.solicitudes import SolicitudService
 
 
@@ -49,11 +51,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.solicitud_service = SolicitudService(engine)
     app.state.historial_service = HistorialService(engine)
     app.state.auth_service = AuthService(engine, app_settings)
+    app.state.mensaje_service = MensajeService(engine)
     app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(mascotas_router)
     app.include_router(solicitudes_router)
     app.include_router(historial_router)
+    app.include_router(mensajes_router)
 
     register_exception_handlers(app)
     app.openapi = lambda: _openapi_schema(app)

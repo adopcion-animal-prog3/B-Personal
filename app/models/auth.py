@@ -67,6 +67,56 @@ def _validate_bcrypt_password(value: str) -> None:
         raise ValueError("password exceeds the supported length")
 
 
+class VerifyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: Email
+    codigo: Annotated[str, Field(strict=True, pattern=r"^\d{6}$")]
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if not _EMAIL_PATTERN.fullmatch(normalized):
+            raise ValueError("email is invalid")
+        return normalized
+
+
+class ResendCodeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: Email
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower()
+
+
+class VerificacionInfo(BaseModel):
+    email: str
+    proposito: Literal["REGISTRO", "LOGIN"]
+    expira_en_minutos: int
+
+
+class VerificacionPendiente(BaseModel):
+    verificacion_requerida: Literal[True] = True
+    verificacion: VerificacionInfo
+
+
+class RegisteredUser(BaseModel):
+    id: int
+    nombre: str
+    email: str
+    rol: Literal["ADMIN", "ADOPTANTE"]
+    verificacion_requerida: Literal[True] = True
+    verificacion: VerificacionInfo
+
+
+class MessageResponse(BaseModel):
+    message: str
+
+
 class PublicUser(BaseModel):
     id: int
     nombre: str
@@ -87,7 +137,15 @@ class AuthSuccessResponse(SuccessResponse[AuthTokenResponse]):
     pass
 
 
-class UserSuccessResponse(SuccessResponse[PublicUser]):
+class UserSuccessResponse(SuccessResponse[RegisteredUser]):
+    pass
+
+
+class VerificationPendingResponse(SuccessResponse[VerificacionPendiente]):
+    pass
+
+
+class MessageSuccessResponse(SuccessResponse[MessageResponse]):
     pass
 
 

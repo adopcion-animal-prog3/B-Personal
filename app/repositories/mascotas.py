@@ -9,7 +9,7 @@ class DatabaseUnavailableError(Exception):
 
 
 _MASCOTA_COLUMNS = (
-    "id, nombre, especie, raza, edad, sexo, descripcion, adoptada, creado_por, created_at"
+    "id, nombre, especie, raza, edad, sexo, descripcion, adoptada, creado_por, imagen, created_at"
 )
 _UPDATE_COLUMNS = (
     "nombre",

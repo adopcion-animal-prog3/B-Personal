@@ -10,9 +10,13 @@ from app.models.auth import (
     AuthSuccessResponse,
     AuthenticatedUserSuccessResponse,
     LoginRequest,
+    MessageSuccessResponse,
     PublicUser,
     RegisterRequest,
+    ResendCodeRequest,
     UserSuccessResponse,
+    VerificationPendingResponse,
+    VerifyRequest,
 )
 from app.services.auth import (
     AuthService,
@@ -20,6 +24,7 @@ from app.services.auth import (
     ExpiredAuthTokenError,
     InvalidAuthTokenError,
     InvalidCredentialsError,
+    WrongPortalError,
 )
 
 router = APIRouter(
@@ -78,6 +83,10 @@ def require_role(*allowed_roles: UserRole | str) -> Callable[..., dict[str, Any]
     return role_dependency
 
 
+def _user_data(user: dict[str, Any]) -> dict[str, Any]:
+    return {key: user[key] for key in ("id", "nombre", "email", "rol")}
+
+
 @router.post(
     "/register",
     response_model=UserSuccessResponse,
@@ -86,47 +95,57 @@ def require_role(*allowed_roles: UserRole | str) -> Callable[..., dict[str, Any]
 def register(
     values: RegisterRequest, auth_service: AuthService = Depends(get_auth_service)
 ) -> dict[str, Any]:
+    """Crea la cuenta y envía un código de verificación al email."""
     try:
-        user = auth_service.register(values)
+        user = auth_service.start_registration(values)
     except EmailAlreadyExistsError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(error)
         ) from error
-    return {
-        "success": True,
-        "status": "success",
-        "data": {
-            "id": user["id"],
-            "nombre": user["nombre"],
-            "email": user["email"],
-            "rol": user["rol"],
-        },
-    }
+    data = {**_user_data(user), "verificacion_requerida": True, "verificacion": user["verificacion"]}
+    return {"success": True, "status": "success", "data": data}
 
 
-@router.post("/login", response_model=AuthSuccessResponse)
+@router.post(
+    "/login",
+    response_model=VerificationPendingResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 def login(
     values: LoginRequest, auth_service: AuthService = Depends(get_auth_service)
 ) -> dict[str, Any]:
+    """Paso 1: valida la contraseña y envía un código de 6 dígitos al email."""
     try:
-        token, user = auth_service.login(values)
+        verificacion = auth_service.start_login(values)
     except InvalidCredentialsError as error:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)
         ) from error
-    return {
-        "success": True,
-        "status": "success",
-        "data": {
-            "token": token,
-            "user": {
-                "id": user["id"],
-                "nombre": user["nombre"],
-                "email": user["email"],
-                "rol": user["rol"],
-            },
-        },
-    }
+    except WrongPortalError as error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(error)
+        ) from error
+    data = {"verificacion_requerida": True, "verificacion": verificacion}
+    return {"success": True, "status": "success", "data": data}
+
+
+@router.post("/verify", response_model=AuthSuccessResponse)
+def verify(
+    values: VerifyRequest, auth_service: AuthService = Depends(get_auth_service)
+) -> dict[str, Any]:
+    """Paso 2 (login o registro): valida el código del email y devuelve el token."""
+    token, user = auth_service.verify_code(values.email, values.codigo)
+    return {"success": True, "status": "success", "data": {"token": token, "user": _user_data(user)}}
+
+
+@router.post("/resend-code", response_model=MessageSuccessResponse)
+def resend_code(
+    values: ResendCodeRequest, auth_service: AuthService = Depends(get_auth_service)
+) -> dict[str, Any]:
+    """Reenvía el código pendiente; responde igual exista o no la cuenta."""
+    auth_service.resend_code(values.email)
+    message = "If a verification is pending, a new code was sent"
+    return {"success": True, "status": "success", "data": {"message": message}}
 
 
 @router.get("/me", response_model=AuthenticatedUserSuccessResponse)
