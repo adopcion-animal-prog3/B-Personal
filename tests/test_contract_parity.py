@@ -20,6 +20,8 @@ class EndpointContractTests(unittest.TestCase):
             "/health/db": {"get"},
             "/api/auth/register": {"post"},
             "/api/auth/login": {"post"},
+            "/api/auth/verify": {"post"},
+            "/api/auth/resend-code": {"post"},
             "/api/auth/me": {"get"},
             "/api/mascotas": {"get", "post"},
             "/api/mascotas/{mascota_id}": {"get", "put", "delete"},
@@ -27,6 +29,10 @@ class EndpointContractTests(unittest.TestCase):
             "/api/solicitudes/{solicitud_id}": {"get", "put"},
             "/api/mascotas/{mascota_id}/historial": {"get", "post"},
             "/api/historial/{historial_id}": {"put", "delete"},
+            "/api/mensajes": {"post"},
+            "/api/mensajes/conversaciones": {"get"},
+            "/api/mensajes/conversaciones/{usuario_id}": {"get"},
+            "/api/mensajes/conversaciones/{usuario_id}/leidos": {"put"},
         }
 
         self.assertEqual(set(paths), set(expected))

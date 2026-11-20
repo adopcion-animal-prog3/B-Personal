@@ -55,6 +55,7 @@ class MascotaResponse(BaseModel):
     descripcion: str | None
     adoptada: bool
     creado_por: int | None
+    imagen: str | None = None
     created_at: datetime
 
 

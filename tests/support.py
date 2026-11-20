@@ -43,7 +43,7 @@ class AdoptionApiTestCase(unittest.TestCase):
             "id INTEGER PRIMARY KEY, nombre VARCHAR(150) NOT NULL, "
             "especie VARCHAR(100) NOT NULL, raza VARCHAR(120), edad INTEGER, "
             "sexo VARCHAR(20), descripcion TEXT, adoptada BOOLEAN NOT NULL DEFAULT 0, "
-            "creado_por INTEGER REFERENCES usuarios(id), "
+            "creado_por INTEGER REFERENCES usuarios(id), imagen TEXT, "
             "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE solicitudes_adopcion ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -57,6 +57,13 @@ class AdoptionApiTestCase(unittest.TestCase):
             "fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "
             "descripcion TEXT NOT NULL, veterinario VARCHAR(200), "
             "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP)",
+            "CREATE TABLE mensajes ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "remitente_id INTEGER NOT NULL REFERENCES usuarios(id), "
+            "destinatario_id INTEGER NOT NULL REFERENCES usuarios(id), "
+            "mascota_id INTEGER REFERENCES mascotas(id), contenido TEXT NOT NULL, "
+            "leido BOOLEAN NOT NULL DEFAULT 0, "
+            "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)",
         )
         with self.engine.begin() as connection:
             for statement in statements:

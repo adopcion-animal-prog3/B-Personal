@@ -1,3 +1,4 @@
+import re
 import secrets
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -35,13 +36,24 @@ class AuthEndpointsTests(unittest.TestCase):
                     "password_hash VARCHAR(255) NOT NULL, "
                     "rol VARCHAR(20) NOT NULL DEFAULT 'ADOPTANTE' "
                     "CHECK (rol IN ('ADMIN', 'ADOPTANTE')), "
+                    "email_verificado BOOLEAN NOT NULL DEFAULT 0, "
                     "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
                 )
             )
+            connection.execute(
+                text(
+                    "CREATE TABLE codigos_verificacion ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER NOT NULL, "
+                    "proposito VARCHAR(20) NOT NULL, codigo_hash VARCHAR(64) NOT NULL, "
+                    "intentos INTEGER NOT NULL DEFAULT 0, usado BOOLEAN NOT NULL DEFAULT 0, "
+                    "expira_en TIMESTAMP NOT NULL, created_at TIMESTAMP NOT NULL)"
+                )
+            )
         self.jwt_secret = secrets.token_urlsafe(32)
-        settings = Settings(jwt_secret=self.jwt_secret)
+        settings = Settings(jwt_secret=self.jwt_secret, mail_mode="memory")
         self.app = create_app(settings)
-        self.app.state.auth_service = AuthService(self.engine, settings)
+        self.auth_service = AuthService(self.engine, settings)
+        self.app.state.auth_service = self.auth_service
         self.client = TestClient(self.app)
 
     def tearDown(self) -> None:
@@ -56,6 +68,17 @@ class AuthEndpointsTests(unittest.TestCase):
             **overrides,
         }
         return self.client.post("/api/auth/register", json=payload)
+
+    def last_code(self, email: str = "ada@example.com") -> str:
+        mail = [m for m in self.auth_service.mailer.outbox if m["to"] == email][-1]
+        return re.search(r"\b(\d{6})\b", mail["text"]).group(1)
+
+    def verify(self, codigo: str, email: str = "ada@example.com"):
+        return self.client.post("/api/auth/verify", json={"email": email, "codigo": codigo})
+
+    def full_login(self):
+        self.assertEqual(self.login().status_code, 202)
+        return self.verify(self.last_code())
 
     def login(self, **overrides: str):
         payload = {
@@ -72,6 +95,8 @@ class AuthEndpointsTests(unittest.TestCase):
         user = response.json()["data"]
         self.assertEqual(user["email"], "ada@example.com")
         self.assertEqual(user["rol"], "ADOPTANTE")
+        self.assertEqual(user["verificacion"]["proposito"], "REGISTRO")
+        self.assertIn("Huellitas", self.auth_service.mailer.outbox[-1]["html"])
         self.assertNotIn("password", response.text)
         self.assertNotIn("password_hash", response.text)
 
@@ -121,7 +146,10 @@ class AuthEndpointsTests(unittest.TestCase):
     def test_login_succeeds_and_bad_credentials_are_rejected(self) -> None:
         self.assertEqual(self.register().status_code, 201)
 
-        response = self.login()
+        first = self.login()
+        self.assertEqual(first.status_code, 202)
+        self.assertNotIn("token", first.json()["data"])
+        response = self.verify(self.last_code())
         self.assertEqual(response.status_code, 200)
         body = response.json()["data"]
         claims = jwt.decode(
@@ -135,6 +163,17 @@ class AuthEndpointsTests(unittest.TestCase):
         self.assertEqual(wrong_password.status_code, 401)
         wrong_email = self.login(email="missing@example.com")
         self.assertEqual(wrong_email.status_code, 401)
+
+    def test_professional_accounts_must_use_the_professional_portal(self) -> None:
+        self.assertEqual(self.register().status_code, 201)
+        with self.engine.begin() as connection:
+            connection.execute(text("UPDATE usuarios SET rol = 'ADMIN'"))
+
+        response = self.login()
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("professional portal", response.json()["message"])
+        self.assertNotIn("token", response.text)
 
     def test_malformed_stored_password_hash_does_not_leak_details(self) -> None:
         with self.engine.begin() as connection:
@@ -183,13 +222,13 @@ class AuthEndpointsTests(unittest.TestCase):
             with self.subTest(settings=settings.jwt_secret):
                 service = AuthService(self.engine, settings)
                 with self.assertRaises(AuthenticationConfigurationError):
-                    service.login(credentials)
+                    service.start_login(credentials)
 
     def test_me_accepts_valid_token_and_rejects_absent_invalid_and_expired_tokens(
         self,
     ) -> None:
         self.assertEqual(self.register().status_code, 201)
-        token = self.login().json()["data"]["token"]
+        token = self.full_login().json()["data"]["token"]
 
         valid = self.client.get(
             "/api/auth/me", headers={"Authorization": f"Bearer {token}"}

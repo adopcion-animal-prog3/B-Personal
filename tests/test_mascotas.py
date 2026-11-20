@@ -153,7 +153,7 @@ class MascotaRepositoryTests(unittest.TestCase):
                         "nombre VARCHAR(150) NOT NULL, especie VARCHAR(100) NOT NULL, "
                         "raza VARCHAR(120), edad INTEGER, sexo VARCHAR(20), "
                         "descripcion TEXT, adoptada BOOLEAN NOT NULL DEFAULT FALSE, "
-                        "creado_por INTEGER, "
+                        "creado_por INTEGER, imagen TEXT, "
                         "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
                     )
                 )

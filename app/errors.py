@@ -12,8 +12,10 @@ from app.repositories.mascotas import DatabaseUnavailableError
 from app.services.auth import AuthenticationConfigurationError
 from app.services.historial import HistorialNotFoundError
 from app.services.mascotas import MascotaNotFoundError
+from app.services.mensajes import UsuarioNotFoundError
 from app.services.policies import BusinessRuleViolationError, ResourceAccessDeniedError
 from app.services.solicitudes import SolicitudNotFoundError
+from app.services.verification import VerificationError
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +25,11 @@ def register_exception_handlers(app: FastAPI) -> None:
         MascotaNotFoundError,
         SolicitudNotFoundError,
         HistorialNotFoundError,
+        UsuarioNotFoundError,
     ):
         app.add_exception_handler(exception_type, resource_not_found_handler)
 
+    app.add_exception_handler(VerificationError, verification_error_handler)
     app.add_exception_handler(ResourceAccessDeniedError, forbidden_handler)
     app.add_exception_handler(BusinessRuleViolationError, business_rule_handler)
     app.add_exception_handler(DatabaseUnavailableError, database_unavailable_handler)
@@ -43,6 +47,11 @@ async def resource_not_found_handler(
     _: Request, error: Exception
 ) -> JSONResponse:
     return error_response(status.HTTP_404_NOT_FOUND, str(error))
+
+
+async def verification_error_handler(_: Request, error: Exception) -> JSONResponse:
+    status_code = getattr(error, "status_code", status.HTTP_400_BAD_REQUEST)
+    return error_response(status_code, str(error))
 
 
 async def forbidden_handler(_: Request, error: Exception) -> JSONResponse:
